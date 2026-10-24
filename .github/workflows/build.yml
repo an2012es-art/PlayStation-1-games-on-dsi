@@ -1,0 +1,39 @@
+name: Build NDS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Checkout official examples (for a matching Makefile)
+        uses: actions/checkout@v4
+        with:
+          repository: devkitPro/nds-examples
+          path: examples
+
+      - name: Install libnds and libfat
+        run: dkp-pacman -Sy --noconfirm --needed nds-dev
+
+      - name: Prepare Makefile
+        run: |
+          MK=$(find examples -path '*hello_world/Makefile' | head -1)
+          echo "Using template: $MK"
+          cp "$MK" Makefile
+          grep -q -- '-lfat' Makefile || sed -i 's/-lnds9/-lfat -lnds9/' Makefile
+          rm -rf examples
+
+      - name: Build
+        run: make
+
+      - name: Upload .nds
+        uses: actions/upload-artifact@v4
+        with:
+          name: PSXEmulDS
+          path: "*.nds"
